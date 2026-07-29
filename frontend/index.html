@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FIFA 20 Analytics & Clustering Lab</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚽</text></svg>">
+    <meta name="description" content="Explore FIFA 20 player statistics, compare attributes side-by-side, and run dynamic KMeans clustering visualizations.">
+    <!-- Font Awesome for sleek icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom style sheet -->
+    <link rel="stylesheet" href="/style.css">
+    <!-- Chart.js CDN for radar and scatter plots -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header>
+        <div class="logo">
+            <i class="fa-solid fa-circle-nodes"></i>
+            <span>FIFA20 CLUSTERING LAB</span>
+        </div>
+        <nav>
+            <button class="nav-btn active" id="btn-dashboard" onclick="switchTab('dashboard')">
+                <i class="fa-solid fa-chart-simple"></i> Player Search
+            </button>
+            <button class="nav-btn" id="btn-comparison" onclick="switchTab('comparison')">
+                <i class="fa-solid fa-code-compare"></i> Comparison Arena
+            </button>
+            <button class="nav-btn" id="btn-clustering" onclick="switchTab('clustering')">
+                <i class="fa-solid fa-network-wired"></i> Clustering Lab
+            </button>
+        </nav>
+    </header>
+
+    <!-- Main Container -->
+    <main>
+        
+        <!-- Tab 1: Dashboard / Search -->
+        <section id="tab-dashboard" class="tab-content active">
+            <div class="section-header">
+                <h1>FUT Player Registry</h1>
+                <p>Search and filter through all 18,278 players in the FIFA 20 database.</p>
+            </div>
+
+            <!-- Search Panel -->
+            <div class="glass-card">
+                <div class="filters-grid">
+                    <div class="filter-group search-bar-wrapper">
+                        <label for="search-input">Player Name</label>
+                        <div style="position: relative;">
+                            <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); z-index: 1;"></i>
+                            <input type="text" id="search-input" class="filter-input" placeholder="Search by name..." oninput="triggerSearch()" style="padding-left: 2.75rem;">
+                        </div>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="filter-position">Position</label>
+                        <select id="filter-position" class="filter-input" onchange="triggerSearch()">
+                            <option value="ALL">All Positions</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="filter-club">Club</label>
+                        <select id="filter-club" class="filter-input" onchange="triggerSearch()">
+                            <option value="ALL">All Clubs</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="filter-nationality">Nationality</label>
+                        <select id="filter-nationality" class="filter-input" onchange="triggerSearch()">
+                            <option value="ALL">All Nationalities</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label>Min Overall: <span id="label-overall">70</span></label>
+                        <div class="slider-group">
+                            <input type="range" id="filter-overall" min="40" max="99" value="70" oninput="updateOverallLabel(this.value)">
+                            <span id="overall-val">70</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Players Grid -->
+            <div class="players-grid-container" id="players-grid">
+                <!-- Skeleton cards loaded initially -->
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+            </div>
+
+            <!-- Pagination -->
+            <div class="pagination">
+                <button id="pagination-prev" class="pagination-btn" onclick="changePage(-1)" disabled>
+                    <i class="fa-solid fa-arrow-left"></i> Previous
+                </button>
+                <span class="page-info" id="pagination-info">Page 1 of 1</span>
+                <button id="pagination-next" class="pagination-btn" onclick="changePage(1)" disabled>
+                    Next <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- Tab 2: Comparison Arena -->
+        <section id="tab-comparison" class="tab-content">
+            <div class="section-header">
+                <h1>Comparison Arena</h1>
+                <p>Compare up to 3 players side-by-side in real-time attribute faceoffs.</p>
+            </div>
+
+            <div class="comparison-arena">
+                <!-- Comparison Slots -->
+                <div class="compare-slots-container">
+                    <div class="compare-slot" id="compare-slot-0" onclick="openCompareSearch(0)">
+                        <i class="fa-solid fa-user-plus"></i>
+                        <h3>Add Player 1</h3>
+                        <p>Click to search and select</p>
+                    </div>
+                    <div class="compare-slot" id="compare-slot-1" onclick="openCompareSearch(1)">
+                        <i class="fa-solid fa-user-plus"></i>
+                        <h3>Add Player 2</h3>
+                        <p>Click to search and select</p>
+                    </div>
+                    <div class="compare-slot" id="compare-slot-2" onclick="openCompareSearch(2)">
+                        <i class="fa-solid fa-user-plus"></i>
+                        <h3>Add Player 3</h3>
+                        <p>Click to search and select</p>
+                    </div>
+                </div>
+
+                <!-- Radar Comparison Chart & Table -->
+                <div class="comparison-table-wrapper" id="comparison-results">
+                    <div class="glass-card" style="margin-bottom: 2rem;">
+                        <h2 style="font-family: var(--font-heading); margin-bottom: 1.5rem; text-align: center;">Stat Distribution Radar</h2>
+                        <div class="radar-chart-container" style="max-height: 400px;">
+                            <canvas id="comparison-radar-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="glass-card">
+                        <table class="comparison-table" id="comparison-table">
+                            <thead>
+                                <tr id="comparison-headers">
+                                    <th style="text-align: left;">Player Stat</th>
+                                    <th>Player 1</th>
+                                    <th>Player 2</th>
+                                    <th>Player 3</th>
+                                </tr>
+                            </thead>
+                            <tbody id="comparison-tbody">
+                                <!-- Filled by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab 3: Clustering Lab -->
+        <section id="tab-clustering" class="tab-content">
+            <div class="section-header">
+                <h1>Machine Learning Clustering Laboratory</h1>
+                <p>Explore football skills and group players into clusters based on their mathematical statistics.</p>
+            </div>
+
+            <div class="clustering-grid">
+                <!-- Left panel: Chart -->
+                <div class="chart-wrapper glass-card">
+                    <div id="clustering-loading" style="position: absolute; display: none; align-items: center; justify-content: center; background: rgba(7, 10, 19, 0.8); top: 0; left: 0; right: 0; bottom: 0; border-radius: 24px; z-index: 10;">
+                        <div style="text-align: center;">
+                            <i class="fa-solid fa-spinner fa-spin" style="font-size: 2.5rem; color: var(--color-cyan); margin-bottom: 1rem;"></i>
+                            <h3>Recalculating Clusters...</h3>
+                            <p style="color: var(--text-secondary); margin-top: 0.25rem;">Running K-Means algorithm & PCA dimension reduction on the backend.</p>
+                        </div>
+                    </div>
+                    <canvas id="clustering-scatter-chart" style="width: 100%; height: 100%;"></canvas>
+                </div>
+
+                <!-- Right panel: Controls & Summary -->
+                <div class="cluster-controls">
+                    <div class="glass-card">
+                        <h3 style="font-family: var(--font-heading); font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">Configuration</h3>
+                        
+                        <div class="filter-group" style="margin-bottom: 1.5rem;">
+                            <label for="cluster-k-select">Number of Clusters (k)</label>
+                            <select id="cluster-k-select" class="filter-input" onchange="runClustering()">
+                                <option value="2">2 Clusters</option>
+                                <option value="3">3 Clusters</option>
+                                <option value="4" selected>4 Clusters (Optimal)</option>
+                                <option value="5">5 Clusters</option>
+                                <option value="6">6 Clusters</option>
+                            </select>
+                            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                                <i class="fa-solid fa-circle-info text-cyan"></i> The Elbow Method & Silhouette visualizations from the ML study show that <strong>k=4</strong> is the optimal size before cluster borders overlap.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="glass-card">
+                        <h3 style="font-family: var(--font-heading); font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">Cluster Profiles</h3>
+                        <div class="cluster-cards-container" id="cluster-cards">
+                            <!-- Filled dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Player Details Modal -->
+    <div class="modal-overlay" id="detail-modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="modal-grid" id="modal-grid-content">
+                <!-- Rendered dynamically by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Comparison Search Modal -->
+    <div class="comparison-search-modal" id="compare-search-modal">
+        <div class="comparison-search-content">
+            <div class="flex-row" style="margin-bottom: 1rem;">
+                <h3 style="font-family: var(--font-heading); font-size: 1.2rem; font-weight: 700;">Add Player to Comparison</h3>
+                <button class="modal-close" style="position: static; width: 30px; height: 30px;" onclick="closeCompareSearch()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="filter-group">
+                <input type="text" id="compare-search-input" class="filter-input" placeholder="Type player name..." oninput="searchComparisonPlayers(this.value)">
+            </div>
+            
+            <div class="compare-search-results" id="compare-search-results">
+                <p style="color: var(--text-muted); text-align: center; margin-top: 2rem;">Start typing to search...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- App Logic script -->
+    <script src="/app.js"></script>
+</body>
+</html>
