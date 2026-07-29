@@ -1,8 +1,8 @@
 import os
 from flask import Flask, jsonify, request
-from data_manager import FIFA20DataManager
+from .data_manager import FIFA20DataManager
 
-# Initialize Flask app, telling it to serve static files from the 'frontend' directory
+
 app = Flask(__name__, static_folder='../frontend', static_url_path='')
 app.config['JSON_AS_ASCII'] = False  # So accented names render correctly
 
